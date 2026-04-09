@@ -1,8 +1,6 @@
+#SPDX-License-Identifier: MIT-0
 ---
 - hosts: localhost
-  connection: local
-  become: true
-  tasks:
-    - name: Include role
-      include_role: 
-        name: ansible_ssh_hardening
+  remote_user: root
+  roles:
+    - ansible-role-ssh-hardening

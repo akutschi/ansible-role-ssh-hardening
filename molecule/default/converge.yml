@@ -1,8 +1,0 @@
----
-- name: Converge
-  hosts: all
-  become: yes
-  tasks:
-    - name: Include role
-      include_role: 
-        name: ansible_ssh_hardening

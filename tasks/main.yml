@@ -1,40 +1,54 @@
+#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for ansible_ssh_hardening
+# tasks file for ansible-role-ssh-hardening
+#
+# Runs as root throughout. Root key is provisioned by Terraform.
+# Root retains SSH access (key only) after hardening.
+# sshd_config is deployed last — AllowGroups becomes active at that point.
 
-- name: Install OpenSSH server and fail2ban
-  apt:
-    name:
-      - openssh-server
-      - fail2ban
+# ---------------------------------------------------------------------------
+# Group and root
+# ---------------------------------------------------------------------------
+
+- name: Ensure ssh group exists
+  ansible.builtin.group:
+    name: "{{ ssh_group }}"
     state: present
-    update_cache: yes
 
-- name: Config fail2ban for ssh
-  blockinfile:
-    path: /etc/fail2ban/jail.local
-    create: yes
-    mode: 0644
-    block: |
-      [DEFAULT]
-      bantime = 666
-      
-      [sshd]
-      enabled = true
-  notify:
-    - Enable and restart fail2ban
+- name: Add root to ssh group
+  ansible.builtin.user:
+    name: root
+    groups: "{{ ssh_group }}"
+    append: yes
 
-- name: Permit ssh root access with key only
-  replace:
-    path: /etc/ssh/sshd_config
-    regexp: '.?PermitRootLogin[ \t]+(?:yes\b|no\b)'
-    replace: 'PermitRootLogin prohibit-password'
-  notify:
-    - Restart SSH
+# ---------------------------------------------------------------------------
+# Host keys — Ed25519 only
+# ---------------------------------------------------------------------------
 
-- name: Disable password authentication for SSH
-  replace:
-    path: /etc/ssh/sshd_config
-    regexp: '.?PasswordAuthentication[ \t]+(?:yes\b|no\b)'
-    replace: 'PasswordAuthentication no'
-  notify:
-    - Restart SSH
+- name: Remove non-Ed25519 host keys
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/ssh/ssh_host_rsa_key
+    - /etc/ssh/ssh_host_rsa_key.pub
+    - /etc/ssh/ssh_host_ecdsa_key
+    - /etc/ssh/ssh_host_ecdsa_key.pub
+    - /etc/ssh/ssh_host_dsa_key
+    - /etc/ssh/ssh_host_dsa_key.pub
+  notify: Reload sshd
+
+# ---------------------------------------------------------------------------
+# sshd_config — deployed last
+# Root is in ssh_group — SSH access is retained after AllowGroups is active.
+# ---------------------------------------------------------------------------
+
+- name: Deploy hardened sshd_config
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+    validate: sshd -t -f %s
+  notify: Reload sshd

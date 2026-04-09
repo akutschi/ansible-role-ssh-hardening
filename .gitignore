@@ -1,23 +1,29 @@
-#####################################################################
-# VS Code
-#####################################################################
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
 
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
+# Virtual environments
+.venv/
+venv/
+env/
 
-# Local History for Visual Studio Code
-.history/
-
-
-#####################################################################
 # Ansible
-#####################################################################
-
-### Ansible ###
 *.retry
+.ansible/
 
+# Molecule testing
+.molecule/
+molecule/*/.cache/
+molecule/*/molecule.yml.bak
 
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

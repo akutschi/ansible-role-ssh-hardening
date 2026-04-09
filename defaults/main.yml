@@ -1,2 +1,6 @@
+#SPDX-License-Identifier: MIT-0
 ---
-# defaults file for ansible_ssh_hardening
+# defaults file for ansible-role-ssh-hardening
+
+# Group that AllowGroups gates SSH access on.
+ssh_group: ssh-users

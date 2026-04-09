@@ -1,61 +1,138 @@
-# Ansible SSH
+Ansible Role SSH Hardening
+==========================
 
-[![CI](https://github.com/akutschi/ansible_ssh_hardening/actions/workflows/ci.yml/badge.svg)](https://github.com/akutschi/ansible_ssh_hardening/actions/workflows/ci.yml)
+Hardens the SSH daemon on Ansible-managed Linux hosts. Deploys a strict
+`sshd_config` with modern algorithms only, restricts SSH access to a
+dedicated group, and removes all non-Ed25519 host keys.
 
-This is a very simple role to configure SSH and [fail2ban](https://en.wikipedia.org/wiki/Fail2ban).
-Root access is enabled but permitted with key only. 
-Password logins are for all users disabled.
+Designed to run as root. Server provisioning (including root's SSH key)
+is handled by Terraform before this role runs.
 
-> This role does not deploy SSH keys. It is assumed that at least one key is already deployed.
+Installation
+------------
 
-## Requirements
-
-This role does not have any requirements.
-
-## Coverage
-
-Any combination of the following is tested:
-
-- Operating System
-  - Ubuntu 20.04 LTS
-  - Debian 10
-- Ansible
-  - 2.9.x
-  - 3.x
-  - 4.x 
-- Python
-  - 3.8
-  - 3.9
-
-## Install Role
-
-To install this role into your `roles` folder just clone, download or run: 
+Install directly from GitHub:
 
 ```bash
-ansible-galaxy install --roles-path ./roles git+https://github.com/akutschi/ansible_ssh_hardening.git,v0.2.0
+ansible-galaxy role install git+https://github.com/your-org/ansible-role-ssh-hardening.git
 ```
 
-## Role Variables
+To install into a local `./roles` directory instead of the default system path:
 
-The role itself does not have any settable variables. 
+```bash
+ansible-galaxy role install git+https://github.com/your-org/ansible-role-ssh-hardening.git \
+  -p ./roles
+```
 
-## Dependencies
+Or pin to a specific version using a tag or commit:
 
-This role does not have any dependencies.
+```bash
+ansible-galaxy role install git+https://github.com/your-org/ansible-role-ssh-hardening.git,v1.0.0 \
+  -p ./roles
+```
 
-## Example Playbook
+To avoid specifying `-p ./roles` every time, set the roles path in `ansible.cfg`:
 
-```yml
----
-- hosts: servers
+```ini
+[defaults]
+roles_path = ./roles
+```
+
+To manage it declaratively, add it to `requirements.yml`:
+
+```yaml
+roles:
+  - name: ansible-role-ssh-hardening
+    src: https://github.com/your-org/ansible-role-ssh-hardening.git
+    scm: git
+    version: main
+```
+
+Then install with:
+
+```bash
+ansible-galaxy install -r requirements.yml -p ./roles
+```
+
+To update all roles in `requirements.yml` at once:
+
+```bash
+ansible-galaxy install -r requirements.yml -p ./roles --force
+```
+
+`--force` reinstalls every listed role regardless of whether it's already present. If a role has `version: main`, it pulls the latest commit.
+
+To update only this role without affecting others:
+
+```bash
+ansible-galaxy role install git+https://github.com/your-org/ansible-role-ssh-hardening.git \
+  -p ./roles --force
+```
+
+Requirements
+------------
+
+- OpenSSH 8.5 or later (required for `sntrup761x25519-sha512` key exchange)
+- Server provisioned by Terraform with root's SSH public key in place
+- Ansible 2.10+
+
+Role Variables
+--------------
+
+| Variable | Default | Description |
+|---|---|---|
+| `ssh_group` | `ssh-users` | Group that `AllowGroups` gates SSH access on. Root is added to this group automatically. |
+
+Dependencies
+------------
+
+None.
+
+Example Playbook
+----------------
+
+```yaml
+- hosts: all
+  remote_user: root
   roles:
-      - ansible_ssh_hardening
+    - role: ansible-role-ssh-hardening
 ```
 
-# License
+To override the SSH group:
 
-GPLv3, see [license](./LICENSE).
+```yaml
+- hosts: all
+  remote_user: root
+  roles:
+    - role: ansible-role-ssh-hardening
+      vars:
+        ssh_group: wheel
+```
 
-# Contributing
+What the role does
+------------------
 
-Feel free to open issues or merge requests if you find problems or have ideas for improvements. Thank you.
+1. Creates the `ssh_group` group
+2. Adds root to `ssh_group`
+3. Removes all non-Ed25519 host keys (RSA, ECDSA, DSA)
+4. Deploys the hardened `sshd_config` (validated with `sshd -t` before writing)
+5. Reloads sshd
+
+Hardening applied
+-----------------
+
+- **Key exchange:** `sntrup761x25519-sha512` (post-quantum hybrid), `curve25519-sha256` fallback
+- **Ciphers:** `chacha20-poly1305`, `aes256-gcm` — AEAD only, no CBC
+- **MACs:** `hmac-sha2-512-etm` — ETM only
+- **Host key:** Ed25519 exclusively; `HostKeyAlgorithms` and `PubkeyAcceptedAlgorithms` locked to `ssh-ed25519`
+- **Authentication:** public key only — password, keyboard-interactive, GSSAPI, Kerberos all disabled
+- **Root login:** `prohibit-password` — key only
+- **Access control:** `AllowGroups` — all accounts not in `ssh_group` are blocked
+- **Forwarding:** TCP, stream-local, agent, tunnel, X11 all disabled
+- **Session:** 5-minute idle timeout, `MaxStartups 10:30:60` flood protection
+- **Misc:** compression off, DNS lookup off, user environment disabled
+
+License
+-------
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

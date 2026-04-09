@@ -1,0 +1,135 @@
+# =============================================================================
+# sshd_config — General Purpose / Ansible-Managed Hosts
+# Hardened. OpenSSH 8.5+ required (sntrup761 support).
+# Managed by Ansible — do not edit manually.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Network
+# ---------------------------------------------------------------------------
+
+Port 22
+AddressFamily inet
+ListenAddress 0.0.0.0
+
+# ---------------------------------------------------------------------------
+# Host Keys — Ed25519 only
+# ECDSA dropped: Ed25519 is strictly better and universally supported.
+# ---------------------------------------------------------------------------
+
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Lock down negotiation to Ed25519 — prevents clients from authenticating
+# with RSA/ECDSA keys even if the host key files were accidentally present.
+HostKeyAlgorithms ssh-ed25519
+PubkeyAcceptedAlgorithms ssh-ed25519
+
+# ---------------------------------------------------------------------------
+# Key Exchange
+# sntrup761x25519: post-quantum hybrid, preferred.
+# curve25519-sha256: fallback for clients that don't support sntrup761.
+# ---------------------------------------------------------------------------
+
+KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256
+
+# ---------------------------------------------------------------------------
+# Ciphers — AEAD only, no CBC
+# chacha20-poly1305: preferred on hosts without AES-NI.
+# aes256-gcm: preferred on hosts with AES-NI (hardware-accelerated).
+# ---------------------------------------------------------------------------
+
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+
+# ---------------------------------------------------------------------------
+# MACs — ETM SHA-512 only
+# ETM (encrypt-then-MAC) prevents CBC padding oracle attacks.
+# ---------------------------------------------------------------------------
+
+MACs hmac-sha2-512-etm@openssh.com
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+LoginGraceTime 20
+PermitRootLogin prohibit-password
+StrictModes yes
+MaxAuthTries 3
+MaxSessions 5
+MaxStartups 10:30:60
+
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+PasswordAuthentication no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+
+# UsePAM yes: enforces account expiry, pam_access, limits.conf, and
+# systemd session creation. A locked/expired account can otherwise
+# still authenticate via SSH key without PAM.
+UsePAM yes
+
+HostbasedAuthentication no
+IgnoreRhosts yes
+IgnoreUserKnownHosts yes
+GSSAPIAuthentication no
+KerberosAuthentication no
+
+PermitUserEnvironment no
+
+# ---------------------------------------------------------------------------
+# Access Control
+# Only members of {{ ssh_group }} can SSH in.
+# Root is a member of {{ ssh_group }} — key-only access (prohibit-password).
+# ---------------------------------------------------------------------------
+
+AllowGroups {{ ssh_group }}
+
+# ---------------------------------------------------------------------------
+# Forwarding & Tunneling
+# ---------------------------------------------------------------------------
+
+AllowTcpForwarding no
+AllowStreamLocalForwarding no
+AllowAgentForwarding no
+GatewayPorts no
+PermitTunnel no
+X11Forwarding no
+
+# ---------------------------------------------------------------------------
+# Session
+# ---------------------------------------------------------------------------
+
+Compression no
+UseDNS no
+TCPKeepAlive yes
+
+# Disconnect idle sessions after 5 minutes.
+ClientAliveInterval 60
+ClientAliveCountMax 5
+
+PrintMotd no
+PrintLastLog yes
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# ---------------------------------------------------------------------------
+# Subsystems
+# SFTP kept: required by Ansible for file transfer (copy, template, fetch).
+# To remove SFTP, set transfer_method=piped + pipelining=true in ansible.cfg.
+# ---------------------------------------------------------------------------
+
+Subsystem sftp internal-sftp
+
+# ---------------------------------------------------------------------------
+# Banner (optional — recommended for compliance/legal notice)
+# ---------------------------------------------------------------------------
+
+# Banner /etc/ssh/banner.txt
