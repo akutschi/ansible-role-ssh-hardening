@@ -22,6 +22,26 @@
     append: yes
 
 # ---------------------------------------------------------------------------
+# fail2ban
+# ---------------------------------------------------------------------------
+
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Configure fail2ban for sshd
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Enable and restart fail2ban
+
+# ---------------------------------------------------------------------------
 # Host keys — Ed25519 only
 # ---------------------------------------------------------------------------
 

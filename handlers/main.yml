@@ -6,3 +6,9 @@
   ansible.builtin.service:
     name: sshd
     state: reloaded
+
+- name: Enable and restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    enabled: yes
+    state: restarted
