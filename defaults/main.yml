@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+#SPDX-License-Identifier: MIT
 ---
 # defaults file for ansible-role-ssh-hardening
 
@@ -6,5 +6,5 @@
 ssh_group: ssh-users
 
 # fail2ban
-fail2ban_bantime: 3600  # seconds — 1 hour
+fail2ban_bantime: 3600 # seconds — 1 hour
 fail2ban_maxretry: 3
