@@ -19,7 +19,7 @@
   ansible.builtin.user:
     name: root
     groups: "{{ ssh_group }}"
-    append: yes
+    append: true
 
 # ---------------------------------------------------------------------------
 # fail2ban
@@ -29,7 +29,7 @@
   ansible.builtin.apt:
     name: fail2ban
     state: present
-    update_cache: yes
+    update_cache: true
     cache_valid_time: 3600
 
 - name: Configure fail2ban for sshd
