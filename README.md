@@ -82,6 +82,8 @@ Role Variables
 | Variable | Default | Description |
 |---|---|---|
 | `ssh_group` | `ssh-users` | Group that `AllowGroups` gates SSH access on. Root is added to this group automatically. |
+| `fail2ban_bantime` | `3600` | Seconds an IP is banned after exceeding `fail2ban_maxretry` failed attempts. |
+| `fail2ban_maxretry` | `3` | Number of failed SSH attempts before an IP is banned. |
 
 Dependencies
 ------------
@@ -114,9 +116,10 @@ What the role does
 
 1. Creates the `ssh_group` group
 2. Adds root to `ssh_group`
-3. Removes all non-Ed25519 host keys (RSA, ECDSA, DSA)
-4. Deploys the hardened `sshd_config` (validated with `sshd -t` before writing)
-5. Reloads sshd
+3. Installs and configures fail2ban for sshd
+4. Removes all non-Ed25519 host keys (RSA, ECDSA, DSA)
+5. Deploys the hardened `sshd_config` (validated with `sshd -t` before writing)
+6. Reloads sshd
 
 Hardening applied
 -----------------
@@ -131,6 +134,10 @@ Hardening applied
 - **Forwarding:** TCP, stream-local, agent, tunnel, X11 all disabled
 - **Session:** 5-minute idle timeout, `MaxStartups 10:30:60` flood protection
 - **Misc:** compression off, DNS lookup off, user environment disabled
+
+**fail2ban:**
+- Bans IPs after `fail2ban_maxretry` failed SSH attempts (default: 3)
+- Ban duration: `fail2ban_bantime` seconds (default: 1 hour)
 
 License
 -------
